@@ -9,7 +9,11 @@ export default {
       secondary: '#a4c0f4',
       accent: '#15b77e',
     },
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Overpass', 'sans-serif'],
+      },
+    },
+    plugins: [],
   },
-  plugins: [],
 };
