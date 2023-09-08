@@ -10,7 +10,7 @@
           lew
         </p>
       </div>
-      <div class="flex flex-col items-center lg:items-start mt-8 lg:mt-0 gap-2 w-1/2 pl-8">
+      <div class="flex flex-col items-center lg:items-start mt-8 lg:mt-0 gap-2 w-1/2 lg:pl-8">
         <LinkButton
           v-for="link in links"
           :key="link.href"

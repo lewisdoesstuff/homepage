@@ -1,6 +1,6 @@
 <template>
   <button
-    class="flex items-center justify-start bg-background border-b border-b-secondary gap-4 w-48 py-2 pl-4 rounded-md rounded-b-none hover:rounded-b-md hover:bg-secondary transition-all duration-300 group"
+    class="flex items-center justify-center lg:justify-start bg-background border-b border-b-secondary gap-4 w-40 lg:w-48 py-2 lg:pl-4 rounded-md rounded-b-none hover:rounded-b-md hover:bg-secondary transition-all duration-300 group"
     @click="gotoLink"
   >
     <font-awesome-icon
