@@ -1,0 +1,7 @@
+version: "3.9"
+
+services:
+  lewooo:
+    image: lewisdoesstuff/homepage:latest
+    ports:
+      - 80:8080
