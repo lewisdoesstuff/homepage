@@ -2,7 +2,7 @@
   <div class="flex flex-col justify-center items-center w-screen h-screen bg-background text-text">
     <div class="mt-auto flex flex-col lg:flex-row items-center justify-between w-full lg:w-1/5">
       <div
-        class="flex flex-col justify-center items-center h-20 lg:h-64 w-1/2 border-b lg:border-b-0 lg:border-r border-primary"
+        class="flex flex-col justify-center items-center h-20 lg:h-64 w-1/2 border-b lg:border-b-0 lg:border-r border-accent"
       >
         <p
           class="text-4xl font-bold text-accent hover:text-primary transition duration-300 cursor-default"
