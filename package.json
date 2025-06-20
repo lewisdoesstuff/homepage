@@ -2,6 +2,7 @@
   "name": "lewooo",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check build-only",
@@ -12,30 +13,32 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^6.4.2",
-    "@fortawesome/free-brands-svg-icons": "^6.4.2",
-    "@fortawesome/free-regular-svg-icons": "^6.4.2",
-    "@fortawesome/free-solid-svg-icons": "^6.4.2",
-    "@fortawesome/vue-fontawesome": "^3.0.3",
+    "@tailwindcss/vite": "^4.1.10",
+    "@vueuse/core": "^13.4.0",
+    "lucide-vue-next": "^0.518.0",
+    "motion-v": "^1.3.0",
+    "tailwindcss": "^4.1.10",
     "vue": "^3.3.4"
   },
   "devDependencies": {
+    "@catppuccin/tailwindcss": "^1.0.0-beta.2",
+    "@iconify/vue": "^5.0.0",
     "@rushstack/eslint-patch": "^1.3.2",
     "@tailwindcss/postcss": "^4.1.10",
     "@tsconfig/node18": "^18.2.0",
     "@types/node": "^18.17.5",
-    "@vitejs/plugin-vue": "^4.3.1",
+    "@vitejs/plugin-vue": "^5.2.4",
     "@vue/eslint-config-prettier": "^8.0.0",
     "@vue/eslint-config-typescript": "^11.0.3",
     "@vue/tsconfig": "^0.4.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "eslint": "^8.46.0",
     "eslint-plugin-vue": "^9.16.1",
-    "npm-run-all": "^4.1.5",
-    "postcss": "^8.4.29",
     "prettier": "^3.0.0",
-    "tailwindcss": "^4.1.10",
-    "typescript": "~5.1.6",
-    "vite": "^4.4.9",
-    "vue-tsc": "^1.8.8"
+    "tailwind-merge": "^3.3.1",
+    "tw-animate-css": "^1.3.4",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
   }
 }

@@ -1,49 +1,39 @@
 <template>
-  <div class="flex flex-col justify-center items-center w-screen h-screen bg-background text-text">
-    <div class="mt-auto flex flex-col lg:flex-row items-center justify-between w-full lg:w-1/5">
-      <div
-        class="flex flex-col justify-center items-center h-20 lg:h-64 w-1/2 border-b lg:border-b-0 lg:border-r border-accent"
-      >
-        <p
-          class="text-4xl font-bold text-accent hover:text-primary transition duration-300 cursor-default"
-        >
-          lew
-        </p>
+  <div
+    class="dark mocha relative flex flex-col justify-center items-center w-screen h-screen bg-ctp-base text-ctp-text"
+  >
+    <BlackHoleBackground class="!absolute inset-0 flex items-center justify-center rounded-xl" />
+    <BlurReveal :delay="0" :duration="1.5" class="z-10">
+      <h1 class="font-bold text-8xl text-ctp-yellow-200 drop-shadow-sm drop-shadow-ctp-red">
+        <LineShadowText shadow-color="var(--catppuccin-color-blue)">lew</LineShadowText>
+      </h1>
+    </BlurReveal>
+    <BlurReveal :delay="1.5" :duration="1" class="z-10">
+      <div class="flex gap-2">
+        <LinkButton v-for="(link, ind) in links" :key="ind" :link="link" />
       </div>
-      <div class="flex flex-col items-center lg:items-start mt-8 lg:mt-0 gap-2 w-1/2 lg:pl-8">
-        <LinkButton
-          v-for="link in links"
-          :key="link.href"
-          :href="link.href"
-          :text="link.text"
-          :icon="link.icon"
-        />
-      </div>
-    </div>
-    <TheFooter class="mt-auto"></TheFooter>
+    </BlurReveal>
   </div>
 </template>
 
 <script setup lang="ts">
 import LinkButton from './components/LinkButton.vue';
 import TheFooter from './components/TheFooter.vue';
+import BlackHoleBackground from './components/ui/bg-black-hole/BlackHoleBackground.vue';
+import BlurReveal from './components/ui/blur-reveal/BlurReveal.vue';
+import LineShadowText from './components/ui/line-shadow-text/LineShadowText.vue';
 import type { LinkItem } from './types';
 
 const links: LinkItem[] = [
   {
     text: 'GitHub',
     href: 'https://github.com/lewisdoesstuff',
-    icon: 'fa-brands fa-github',
-  },
-  {
-    text: 'LinkedIn',
-    href: 'https://www.linkedin.com/in/lewisdoesstuff/',
-    icon: 'fa-brands fa-linkedin',
+    icon: 'mdi:github',
   },
   {
     text: 'Email',
     href: 'mailto:hello@lew.ooo',
-    icon: 'envelope',
+    icon: 'mdi:alternate-email',
   },
 ];
 </script>
