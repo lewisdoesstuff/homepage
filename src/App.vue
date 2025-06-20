@@ -8,7 +8,7 @@
         <LineShadowText shadow-color="var(--catppuccin-color-blue)">lew</LineShadowText>
       </h1>
     </BlurReveal>
-    <BlurReveal :delay="1.5" :duration="1" class="z-10">
+    <BlurReveal :delay="1.5" :duration="0.75" class="z-10">
       <div class="flex gap-2">
         <LinkButton v-for="(link, ind) in links" :key="ind" :link="link" />
       </div>
@@ -18,7 +18,6 @@
 
 <script setup lang="ts">
 import LinkButton from './components/LinkButton.vue';
-import TheFooter from './components/TheFooter.vue';
 import BlackHoleBackground from './components/ui/bg-black-hole/BlackHoleBackground.vue';
 import BlurReveal from './components/ui/blur-reveal/BlurReveal.vue';
 import LineShadowText from './components/ui/line-shadow-text/LineShadowText.vue';
