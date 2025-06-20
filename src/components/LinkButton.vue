@@ -1,6 +1,6 @@
 <template>
   <button
-    class="grid grid-cols-3 bg-ctp-base/90 border border-ctp-peach gap-4 w-40 lg:w-48 py-2 lg:pl-4 cursor-pointer rounded-3xl hover:rounded-md hover:bg-ctp-mantle transition-all duration-300 group"
+    class="grid grid-cols-3 bg-ctp-base/75 border border-ctp-peach gap-4 w-40 lg:w-48 py-2 lg:pl-4 cursor-pointer rounded-3xl hover:rounded-md hover:bg-ctp-mantle/90 transition-all duration-300 group"
     @click="gotoLink"
   >
     <Icon
