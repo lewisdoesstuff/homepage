@@ -2,7 +2,11 @@
   <div
     class="dark mocha relative flex flex-col justify-center items-center w-screen h-screen bg-ctp-base text-ctp-text"
   >
-    <BlackHoleBackground class="!absolute inset-0 flex items-center justify-center rounded-xl" />
+    <BlackHoleBackground
+      class="!absolute inset-0 flex items-center justify-center rounded-xl"
+      :number-of-discs="100"
+      :number-of-lines="50"
+    />
     <BlurReveal :delay="0" :duration="1" class="z-10">
       <h1
         class="font-bold text-8xl text-ctp-yellow-200 hover:text-ctp-blue-200 drop-shadow-sm drop-shadow-ctp-red transition duration-[2000ms]"

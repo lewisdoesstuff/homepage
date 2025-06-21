@@ -3,8 +3,8 @@
     data-slot="black-hole-background"
     :class="[
       'relative size-full overflow-hidden',
-      `before:absolute before:left-1/2 before:top-1/2 before:block before:size-[140%] before:content-[''] before:[background:radial-gradient(ellipse_at_50%_55%,transparent_10%,var(--catppuccin-color-base)_50%)] before:[transform:translate3d(-50%,-50%,0)]`,
-      `after:absolute after:left-1/2 after:top-1/2 after:z-[5] after:block after:size-full after:mix-blend-overlay after:content-[''] after:[background:radial-gradient(ellipse_at_50%_75%,#a900ff_20%,transparent_75%)] after:[transform:translate3d(-50%,-50%,0)]`,
+      `before:absolute before:left-1/2 before:top-1/2 before:block before:size-[200%] before:content-[''] before:[background:radial-gradient(circle_at_50%_55%,transparent_10%,var(--catppuccin-color-base)_50%)] before:[transform:translate3d(-50%,-50%,0)]`,
+      `after:absolute after:left-1/2 after:top-1/2 after:z-[5] after:block after:size-full after:mix-blend-overlay after:content-[''] after:[background:radial-gradient(circle_at_50%_75%,#a900ff_20%,transparent_75%)] after:[transform:translate3d(-50%,-50%,0)]`,
     ]"
     v-bind="props"
   >
@@ -15,9 +15,10 @@
     />
     <motion.div
       :class="[
-        'absolute left-1/2 top-[-71.5%] z-[3] h-[140%] w-[30%] rounded-b-full opacity-75 mix-blend-plus-darker blur-3xl [background-position:0%_100%] [background-size:100%_200%] [transform:translate3d(-50%,0,0)] dark:mix-blend-plus-lighter',
+        'absolute z-[3] h-[200%] max-w-64 w-[20%] rounded-b-full opacity-75 mix-blend-plus-darker blur-3xl [background-position:0%_100%] [background-size:100%_200%] dark:mix-blend-plus-lighter',
         '[background:linear-gradient(20deg,var(--catppuccin-color-rosewater),var(--catppuccin-color-red)_16.5%,var(--catppuccin-color-teal)_33%,var(--catppuccin-color-green)_49.5%,var(--catppuccin-color-blue)_66%,var(--catppuccin-color-flamingo)_85.5%,var(--catppuccin-color-sapphire)_100%)_0_100%_/_100%_200%]',
       ]"
+      :style="plumeStyle"
       :animate="{ backgroundPosition: '0% 300%' }"
       :transition="{ duration: 5, ease: 'linear', repeat: Infinity }"
     />
@@ -28,7 +29,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { motion } from 'motion-v';
 
 interface Disc {
@@ -108,6 +109,24 @@ const stateRef = ref<State>({
   particleArea: {},
 });
 
+const MAX_ASPECT = 16;
+
+const plumeStyle = computed(() => {
+  const { width, height } = stateRef.value.rect;
+  if (!stateRef.value.clip.disc) return {};
+  const { y: y1 } = stateRef.value.clip.disc;
+
+  const depthFactor = Math.min(1, (width / height - 1) / (MAX_ASPECT - 1));
+
+  const extraShiftPct = Math.min(8, depthFactor * 100 + 10);
+
+  return {
+    left: '50%',
+    bottom: `${height - y1}px`,
+    transform: `translateX(-50%) translateY(${extraShiftPct}%)`,
+  };
+});
+
 function linear(p: number) {
   return p;
 }
@@ -148,13 +167,15 @@ function setDiscs() {
   const { width, height } = stateRef.value.rect;
   if (width <= 0 || height <= 0) return;
 
+  const base = Math.max(width, height);
+
   stateRef.value.discs = [];
   stateRef.value.startDisc = {
     p: 0,
     x: width * 0.5,
     y: height * 0.45,
-    w: width * 0.75,
-    h: height * 0.7,
+    w: base * 0.75,
+    h: base * 0.7,
   };
   stateRef.value.endDisc = {
     p: 0,
@@ -299,12 +320,14 @@ function drawDiscs(ctx: CanvasRenderingContext2D) {
   ctx.strokeStyle = props.strokeColor;
   ctx.lineWidth = 2;
   const outerDisc = stateRef.value.startDisc;
+
   ctx.beginPath();
   ctx.ellipse(outerDisc.x, outerDisc.y, outerDisc.w, outerDisc.h, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.closePath();
   stateRef.value.discs.forEach((disc: Disc, i: number) => {
     if (i % 5 !== 0) return;
+
     if (disc.w < (stateRef.value.clip.disc?.w || 0) - 5) {
       ctx.save();
       ctx.clip(stateRef.value.clip.path!);
