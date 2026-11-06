@@ -4,22 +4,22 @@
     :class="[
       'relative size-full overflow-hidden',
       `before:absolute before:left-1/2 before:top-1/2 before:block before:size-[200%] before:content-[''] before:[background:radial-gradient(circle_at_50%_55%,transparent_10%,var(--catppuccin-color-base)_50%)] before:[transform:translate3d(-50%,-50%,0)]`,
-      `after:absolute after:left-1/2 after:top-1/2 after:z-[5] after:block after:size-full after:mix-blend-overlay after:content-[''] after:[background:radial-gradient(circle_at_50%_75%,#a900ff_20%,transparent_75%)] after:[transform:translate3d(-50%,-50%,0)]`,
+      `after:absolute after:left-1/2 after:top-1/2 after:z-[5] after:block after:size-full after:mix-blend-overlay after:content-[''] after:[background:radial-gradient(circle_at_50%_75%,var(--bh-glow)_20%,transparent_75%)] after:[transform:translate3d(-50%,-50%,0)] after:transition-[background] after:duration-1000`,
+      props.class,
     ]"
-    v-bind="props"
+    :style="{ '--bh-glow': props.glowColor }"
   >
     <slot></slot>
     <canvas
       ref="canvasRef"
-      class="absolute inset-0 block size-full opacity-10 dark:opacity-20 starting:blur-3xl blur-none transition duration-1000 ease-out"
+      class="absolute inset-0 block size-full starting:blur-3xl blur-none transition duration-1000 ease-out motion-reduce:transition-none"
     />
     <motion.div
       :class="[
         'absolute z-[3] h-[200%] max-w-64 w-[20%] rounded-b-full opacity-75 mix-blend-plus-darker blur-3xl [background-position:0%_100%] [background-size:100%_200%] dark:mix-blend-plus-lighter',
-        '[background:linear-gradient(20deg,var(--catppuccin-color-rosewater),var(--catppuccin-color-red)_16.5%,var(--catppuccin-color-teal)_33%,var(--catppuccin-color-green)_49.5%,var(--catppuccin-color-blue)_66%,var(--catppuccin-color-flamingo)_85.5%,var(--catppuccin-color-sapphire)_100%)_0_100%_/_100%_200%]',
       ]"
       :style="plumeStyle"
-      :animate="{ backgroundPosition: '0% 300%' }"
+      :animate="props.animate ? { backgroundPosition: '0% 300%' } : undefined"
       :transition="{ duration: 5, ease: 'linear', repeat: Infinity }"
     />
     <div
@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { motion } from 'motion-v';
 
 interface Disc {
@@ -69,7 +69,7 @@ interface State {
   clip: Clip;
   startDisc: Disc;
   endDisc: Disc;
-  rect: { width: number; height: number };
+  rect: { width: number; height: number; left: number; top: number };
   render: { width: number; height: number; dpi: number };
   particleArea: {
     sw?: number;
@@ -78,13 +78,36 @@ interface State {
     sx?: number;
     ex?: number;
   };
-  linesCanvas?: HTMLCanvasElement;
+  // Index of the first segment of each line that is drawn clipped to the hole.
+  lineClipFrom: number[];
+}
+
+// A point on screen that bends the scene towards itself.
+interface Gravity {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  s: number;
+  target: number;
+  // 0 at the centre of the screen, 1 further out: the pull fades as it nears the middle.
+  reach: number;
+  surge: number;
 }
 interface Props {
   strokeColor?: string;
   numberOfLines?: number;
   numberOfDiscs?: number;
   particleRGBColor?: [number, number, number];
+  /** Seven colours for the plume, top to bottom. */
+  plumeColors?: string[];
+  glowColor?: string;
+  /** Let the pointer bend the scene. */
+  gravity?: boolean;
+  /** When false, a single still frame is drawn. */
+  animate?: boolean;
+  /** 0–1: speeds everything up and pulls the scene into the hole. */
+  surge?: number;
   class?: string;
 }
 
@@ -93,7 +116,26 @@ const props = withDefaults(defineProps<Props>(), {
   numberOfLines: 50,
   numberOfDiscs: 50,
   particleRGBColor: () => [255, 255, 255],
+  plumeColors: () => [
+    'var(--catppuccin-color-rosewater)',
+    'var(--catppuccin-color-red)',
+    'var(--catppuccin-color-teal)',
+    'var(--catppuccin-color-green)',
+    'var(--catppuccin-color-blue)',
+    'var(--catppuccin-color-flamingo)',
+    'var(--catppuccin-color-sapphire)',
+  ],
+  glowColor: '#a900ff',
+  gravity: true,
+  animate: true,
+  surge: 0,
 });
+
+// The canvas is drawn at full alpha, then masked down to this (brighter around the pointer).
+const BASE_ALPHA = 0.2;
+const LENS_ALPHA = 0.6;
+const PULL = 0.28;
+const PLUME_STOPS = ['', '16.5%', '33%', '49.5%', '66%', '85.5%', '100%'];
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const animationFrameIdRef = ref<number>(0);
@@ -104,10 +146,16 @@ const stateRef = ref<State>({
   clip: {},
   startDisc: { p: 0, x: 0, y: 0, w: 0, h: 0 },
   endDisc: { p: 0, x: 0, y: 0, w: 0, h: 0 },
-  rect: { width: 0, height: 0 },
+  rect: { width: 0, height: 0, left: 0, top: 0 },
   render: { width: 0, height: 0, dpi: 1 },
   particleArea: {},
+  lineClipFrom: [],
 });
+const pull: Gravity = { x: 0, y: 0, tx: 0, ty: 0, s: 0, target: 0, reach: 0, surge: 0 };
+
+function strength() {
+  return Math.max(pull.s * pull.reach, pull.surge);
+}
 
 const MAX_ASPECT = 16;
 
@@ -120,10 +168,13 @@ const plumeStyle = computed(() => {
 
   const extraShiftPct = Math.min(8, depthFactor * 100 + 10);
 
+  const stops = props.plumeColors.map((c, i) => `${c} ${PLUME_STOPS[i] ?? ''}`).join(',');
+
   return {
     left: '50%',
     bottom: `${height - y1}px`,
     transform: `translateX(-50%) translateY(${extraShiftPct}%)`,
+    backgroundImage: `linear-gradient(20deg,${stops})`,
   };
 });
 
@@ -153,7 +204,7 @@ function setSize() {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
-  stateRef.value.rect = { width: rect.width, height: rect.height };
+  stateRef.value.rect = { width: rect.width, height: rect.height, left: rect.left, top: rect.top };
   stateRef.value.render = {
     width: rect.width,
     height: rect.height,
@@ -231,46 +282,74 @@ function setLines() {
     }
   });
 
-  const offCanvas = document.createElement('canvas');
-  // Ensure we set dimensions before getting context
-  offCanvas.width = Math.max(1, width); // Ensure at least 1px
-  offCanvas.height = Math.max(1, height); // Ensure at least 1px
+  // Work out where each line enters the hole once; drawing then happens every frame so it can bend.
+  const ctx = document.createElement('canvas').getContext('2d');
+  const clipPath = stateRef.value.clip.path;
+  stateRef.value.lineClipFrom = stateRef.value.lines.map((line: Point[]) => {
+    if (!ctx || !clipPath) return Infinity;
+    for (let j = 1; j < line.length; j++) {
+      const { x, y } = line[j];
+      if (ctx.isPointInPath(clipPath, x, y) || ctx.isPointInStroke(clipPath, x, y)) return j + 1;
+    }
+    return Infinity;
+  });
+}
 
-  const ctx = offCanvas.getContext('2d');
-  if (!ctx || !stateRef.value.clip.path) {
-    stateRef.value.linesCanvas = undefined;
+function lens(x: number, y: number): [number, number] {
+  const s = strength();
+  if (s < 0.001) return [x, y];
+  const { width, height } = stateRef.value.rect;
+  const r = Math.min(260, Math.max(120, Math.min(width, height) * 0.18)) * (1 + pull.surge * 3);
+  const dx = pull.x - x;
+  const dy = pull.y - y;
+  const f = (s * PULL * r * r) / (dx * dx + dy * dy + r * r);
+  return [x + dx * f, y + dy * f];
+}
+
+function traceEllipse(ctx: CanvasRenderingContext2D | Path2D, d: Disc) {
+  if (strength() < 0.001) {
+    ctx.ellipse(d.x, d.y, d.w, d.h, 0, 0, Math.PI * 2);
     return;
   }
+  const steps = 72;
+  for (let k = 0; k <= steps; k++) {
+    const a = (k / steps) * Math.PI * 2;
+    const [x, y] = lens(d.x + Math.cos(a) * d.w, d.y + Math.sin(a) * d.h);
+    if (k === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+}
 
-  // Clear the canvas first
-  ctx.clearRect(0, 0, offCanvas.width, offCanvas.height);
+// The hole's outline, bent along with everything else so lines aren't cut off at its old edge.
+let frameClip: Path2D | undefined;
 
-  stateRef.value.lines.forEach((line: Point[]) => {
-    ctx.save();
-    let lineIsIn = false;
-    line.forEach((p1: Point, j: number) => {
-      if (j === 0) return;
-      const p0 = line[j - 1];
-      if (
-        !lineIsIn &&
-        (ctx.isPointInPath(stateRef.value.clip.path!, p1.x, p1.y) ||
-          ctx.isPointInStroke(stateRef.value.clip.path!, p1.x, p1.y))
-      ) {
-        lineIsIn = true;
-      } else if (lineIsIn) {
-        ctx.clip(stateRef.value.clip.path!);
-      }
-      ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.strokeStyle = props.strokeColor;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.closePath();
-    });
-    ctx.restore();
+function lensedClip(): Path2D | undefined {
+  const { path, disc } = stateRef.value.clip;
+  if (!path || !disc || strength() < 0.001) return path;
+  const clip = new Path2D();
+  traceEllipse(clip, disc);
+  clip.closePath();
+  // The column above the hole; its top sits well off-screen so bending never drags it into view.
+  const x0 = disc.x - disc.w;
+  const x1 = disc.x + disc.w;
+  const top = -stateRef.value.rect.height;
+  const corners: Point[] = [
+    { x: x0, y: top },
+    { x: x1, y: top },
+    { x: x1, y: disc.y },
+    { x: x0, y: disc.y },
+  ];
+  const steps = 32;
+  corners.forEach((a, c) => {
+    const b = corners[(c + 1) % corners.length];
+    for (let k = 0; k < steps; k++) {
+      const [x, y] = lens(a.x + ((b.x - a.x) * k) / steps, a.y + ((b.y - a.y) * k) / steps);
+      if (c === 0 && k === 0) clip.moveTo(x, y);
+      else clip.lineTo(x, y);
+    }
   });
-  stateRef.value.linesCanvas = offCanvas;
+  clip.closePath();
+  return clip;
 }
 
 function initParticle(start: boolean = false): Particle {
@@ -322,7 +401,7 @@ function drawDiscs(ctx: CanvasRenderingContext2D) {
   const outerDisc = stateRef.value.startDisc;
 
   ctx.beginPath();
-  ctx.ellipse(outerDisc.x, outerDisc.y, outerDisc.w, outerDisc.h, 0, 0, Math.PI * 2);
+  traceEllipse(ctx, outerDisc);
   ctx.stroke();
   ctx.closePath();
   stateRef.value.discs.forEach((disc: Disc, i: number) => {
@@ -330,10 +409,10 @@ function drawDiscs(ctx: CanvasRenderingContext2D) {
 
     if (disc.w < (stateRef.value.clip.disc?.w || 0) - 5) {
       ctx.save();
-      ctx.clip(stateRef.value.clip.path!);
+      ctx.clip(frameClip!);
     }
     ctx.beginPath();
-    ctx.ellipse(disc.x, disc.y, disc.w, disc.h, 0, 0, Math.PI * 2);
+    traceEllipse(ctx, disc);
     ctx.stroke();
     ctx.closePath();
     if (disc.w < (stateRef.value.clip.disc?.w || 0) - 5) {
@@ -343,22 +422,39 @@ function drawDiscs(ctx: CanvasRenderingContext2D) {
 }
 
 function drawLines(ctx: CanvasRenderingContext2D) {
-  if (
-    stateRef.value.linesCanvas &&
-    stateRef.value.linesCanvas.width > 0 &&
-    stateRef.value.linesCanvas.height > 0
-  ) {
-    ctx.drawImage(stateRef.value.linesCanvas, 0, 0);
-  }
+  const { lines, lineClipFrom } = stateRef.value;
+  const trace = (clipped: boolean) => {
+    ctx.beginPath();
+    lines.forEach((line: Point[], i: number) => {
+      const from = clipped ? lineClipFrom[i] - 1 : 0;
+      const to = clipped ? line.length - 1 : Math.min(line.length - 1, lineClipFrom[i] - 1);
+      for (let j = Math.max(0, from); j <= to; j++) {
+        const [x, y] = lens(line[j].x, line[j].y);
+        if (j === Math.max(0, from)) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+  };
+  ctx.strokeStyle = props.strokeColor;
+  ctx.lineWidth = 2;
+  trace(false);
+  if (!frameClip) return;
+  ctx.save();
+  ctx.clip(frameClip);
+  trace(true);
+  ctx.restore();
 }
 
 function drawParticles(ctx: CanvasRenderingContext2D) {
+  if (!frameClip) return;
   ctx.save();
-  ctx.clip(stateRef.value.clip.path!);
+  ctx.clip(frameClip);
   stateRef.value.particles.forEach((particle: Particle) => {
     ctx.fillStyle = particle.c;
+    const [x, y] = lens(particle.x, particle.y);
     ctx.beginPath();
-    ctx.rect(particle.x, particle.y, particle.r, particle.r);
+    ctx.rect(x, y, particle.r, particle.r);
     ctx.closePath();
     ctx.fill();
   });
@@ -367,7 +463,7 @@ function drawParticles(ctx: CanvasRenderingContext2D) {
 
 function moveDiscs() {
   stateRef.value.discs.forEach((disc: Disc) => {
-    disc.p = (disc.p + 0.001) % 1;
+    disc.p = (disc.p + 0.001 * (1 + pull.surge * 6)) % 1;
     tweenDisc(disc);
   });
 }
@@ -376,14 +472,52 @@ function moveParticles() {
   stateRef.value.particles.forEach((particle: Particle, idx: number) => {
     particle.p = 1 - particle.y / (stateRef.value.particleArea.h || 1);
     particle.x = particle.sx + particle.dx * particle.p;
-    particle.y -= particle.vy;
+    particle.y -= particle.vy * (1 + pull.surge * 4);
     if (particle.y < 0) {
       stateRef.value.particles[idx] = initParticle();
     }
   });
 }
 
-function tick() {
+function moveGravity() {
+  pull.target = props.gravity ? pull.target : 0;
+  pull.s += (pull.target - pull.s) * 0.06;
+  pull.surge += (props.surge - pull.surge) * 0.05;
+  // During a surge the pull drifts from the pointer to the throat of the hole.
+  const hole = stateRef.value.clip.disc;
+  const hx = hole ? hole.x : stateRef.value.rect.width / 2;
+  const hy = hole ? hole.y : stateRef.value.rect.height / 2;
+  const tx = pull.tx + (hx - pull.tx) * pull.surge;
+  const ty = pull.ty + (hy - pull.ty) * pull.surge;
+  pull.x += (tx - pull.x) * 0.15;
+  pull.y += (ty - pull.y) * 0.15;
+  const { width, height } = stateRef.value.rect;
+  const min = Math.min(width, height);
+  const t = Math.min(
+    1,
+    Math.max(0, (Math.hypot(pull.x - width / 2, pull.y - height / 2) - min * 0.06) / (min * 0.4))
+  );
+  pull.reach = t * t * (3 - 2 * t);
+}
+
+function applyMask(ctx: CanvasRenderingContext2D) {
+  const { width, height } = stateRef.value.rect;
+  const base = BASE_ALPHA + pull.surge * 0.25;
+  ctx.globalCompositeOperation = 'destination-in';
+  if (pull.s > 0.001) {
+    const r = Math.min(width, height) * 0.35;
+    const grad = ctx.createRadialGradient(pull.x, pull.y, 0, pull.x, pull.y, r);
+    grad.addColorStop(0, `rgba(0,0,0,${base + (LENS_ALPHA - base) * pull.s})`);
+    grad.addColorStop(1, `rgba(0,0,0,${base})`);
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = `rgba(0,0,0,${base})`;
+  }
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function draw(move: boolean) {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -391,13 +525,32 @@ function tick() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.scale(stateRef.value.render.dpi, stateRef.value.render.dpi);
-  moveDiscs();
-  moveParticles();
+  if (move) {
+    moveGravity();
+    moveDiscs();
+    moveParticles();
+  }
+  frameClip = lensedClip();
   drawDiscs(ctx);
   drawLines(ctx);
   drawParticles(ctx);
+  applyMask(ctx);
   ctx.restore();
+}
+
+function tick() {
+  draw(true);
   animationFrameIdRef.value = requestAnimationFrame(tick);
+}
+
+function start() {
+  cancelAnimationFrame(animationFrameIdRef.value);
+  if (props.animate) {
+    tick();
+  } else {
+    pull.s = pull.surge = 0;
+    draw(false);
+  }
 }
 
 function init() {
@@ -408,23 +561,50 @@ function init() {
 }
 
 function handleResize() {
-  setSize();
-  setDiscs();
-  setLines();
-  setParticles();
+  init();
+  if (!props.animate) draw(false);
 }
+
+function handlePointerMove(e: PointerEvent) {
+  const { left, top } = stateRef.value.rect;
+  pull.tx = e.clientX - left;
+  pull.ty = e.clientY - top;
+  // Arriving from nowhere: appear under the pointer instead of sliding in from the last spot.
+  if (pull.s < 0.01) {
+    pull.x = pull.tx;
+    pull.y = pull.ty;
+  }
+  pull.target = 1;
+}
+
+function handlePointerGone(e: PointerEvent | MouseEvent) {
+  if (e.type === 'mouseout' && (e as MouseEvent).relatedTarget) return;
+  if (e.type === 'pointerup' && (e as PointerEvent).pointerType === 'mouse') return;
+  pull.target = 0;
+}
+
+watch(() => props.animate, start);
 
 onMounted(() => {
   nextTick(() => {
-    setSize();
     init();
-    tick();
+    start();
     window.addEventListener('resize', handleResize);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerdown', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerGone);
+    window.addEventListener('pointercancel', handlePointerGone);
+    document.addEventListener('mouseout', handlePointerGone);
   });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('pointermove', handlePointerMove);
+  window.removeEventListener('pointerdown', handlePointerMove);
+  window.removeEventListener('pointerup', handlePointerGone);
+  window.removeEventListener('pointercancel', handlePointerGone);
+  document.removeEventListener('mouseout', handlePointerGone);
   cancelAnimationFrame(animationFrameIdRef.value);
 });
 </script>

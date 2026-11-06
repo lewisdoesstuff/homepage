@@ -1,26 +1,54 @@
 <template>
-  <button
-    class="grid grid-cols-3 bg-ctp-base/75 border border-ctp-peach gap-4 w-40 lg:w-48 py-2 lg:pl-4 cursor-pointer rounded-3xl hover:rounded-md hover:bg-ctp-mantle/90 transition-all duration-300 group"
-    @click="gotoLink"
+  <!-- Plain text in the title's colours; on hover it takes the title's hover colour and the same
+       drifting hatched shadow, on the icon and the text alike. -->
+  <a
+    class="group flex items-center gap-2 px-3.5 py-1.5 text-xl font-semibold lowercase tracking-wide text-[var(--title)] [text-shadow:0_0_1px_var(--title-halo),0_0_14px_var(--title-halo)] outline-none transition-colors duration-300 hover:text-[var(--title-hover)] focus-visible:text-[var(--title-hover)]"
+    :href="link.href"
   >
-    <Icon
-      class="ml-4 w-8 h-8 text-ctp-subtext0 group-hover:text-ctp-text transition-all delay-75 duration-300"
-      :icon="link.icon"
-    />
-    <p class="font-semibold text-lg text-ctp-subtext0 mt-1 group-hover:text-ctp-text">
-      {{ link.text }}
-    </p>
-  </button>
+    <span
+      class="relative z-0 inline-flex transition-[rotate] duration-300 group-hover:-rotate-12 group-focus-visible:-rotate-12"
+    >
+      <Icon class="size-6" :icon="link.icon" />
+      <Icon
+        class="hatch absolute left-[2px] top-[2px] -z-10 size-6 text-[var(--title-hover-shadow)] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+        :icon="link.icon"
+        aria-hidden="true"
+      />
+    </span>
+    <LineShadowText
+      shadow-color="var(--title-hover-shadow)"
+      class="after:left-[0.1em] after:top-[0.1em] after:bg-[length:0.15em_0.15em] after:opacity-0 after:transition-opacity after:duration-300 group-hover:after:opacity-100 group-focus-visible:after:opacity-100"
+      >{{ link.text }}</LineShadowText
+    >
+  </a>
 </template>
 
 <script setup lang="ts">
 import type { LinkItem } from '@/types';
 import { Icon } from '@iconify/vue';
-const props = defineProps<{
+import LineShadowText from './ui/line-shadow-text/LineShadowText.vue';
+defineProps<{
   link: LinkItem;
 }>();
-
-const gotoLink = () => {
-  window.location.href = props.link.href;
-};
 </script>
+
+<style scoped>
+/* The same hatch LineShadowText draws behind text, cut out of a copy of the icon. */
+.hatch {
+  mask-image: linear-gradient(45deg, transparent 45%, #000 45%, #000 55%, transparent 0);
+  mask-size: 3px 3px;
+  animation: hatch-drift 15s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hatch {
+    animation: none;
+  }
+}
+
+@keyframes hatch-drift {
+  to {
+    mask-position: 27px -48px;
+  }
+}
+</style>
