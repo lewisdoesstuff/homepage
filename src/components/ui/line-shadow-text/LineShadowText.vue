@@ -1,13 +1,13 @@
 <template>
   <component
     :is="as"
-    class="shadow-color"
+    :style="{ '--shadow-color': props.shadowColor }"
     :class="
       cn(
         'relative z-0 inline-flex',
         'after:absolute after:left-[0.04em] after:top-[0.04em] after:-z-10',
         'after:bg-[linear-gradient(45deg,transparent_45%,var(--shadow-color)_45%,var(--shadow-color)_55%,transparent_0)]',
-        'after:bg-[length:0.06em_0.06em] after:bg-clip-text after:text-ctp-mauve/10',
+        'after:bg-[length:0.06em_0.06em] after:bg-clip-text after:text-[color-mix(in_oklab,var(--shadow-color)_10%,transparent)]',
         'after:content-[attr(data-text)]',
         'animate-line-shadow',
         props.class
@@ -45,12 +45,14 @@ if (!content) {
 </script>
 
 <style scoped>
-.shadow-color {
-  --shadow-color: var(--catppuccin-color-mauve);
-}
-
 .animate-line-shadow::after {
   animation: line-shadow 15s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-line-shadow::after {
+    animation: none;
+  }
 }
 
 @keyframes line-shadow {
