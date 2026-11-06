@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - main
-  # Weekly rebuild so base-image (node:lts-alpine) security fixes ship without a code change.
+  # Weekly rebuild so base-image (nginx-unprivileged:alpine) security fixes ship without a code change.
   schedule:
     - cron: '0 4 * * 1'
   workflow_dispatch:
