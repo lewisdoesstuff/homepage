@@ -9,7 +9,7 @@
       :while-in-view="getAnimate()"
       :transition="{
         duration: props.duration,
-        easing: 'easeInOut',
+        ease: 'easeInOut',
         delay: props.delay === 0 ? 0 : props.delay * index + 1,
       }"
     >
@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { Motion } from 'motion-v';
-import { ref, onMounted, watchEffect, useSlots } from 'vue';
+import { ref, onMounted, watchEffect, useSlots, type VNode } from 'vue';
 
 interface Props {
   duration?: number;
@@ -41,8 +41,7 @@ const container = ref(null);
 const childElements = ref([]);
 const slots = useSlots();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const children = ref<any>([]);
+const children = ref<VNode[]>([]);
 
 onMounted(() => {
   // This will reactively capture all content provided in the default slot
